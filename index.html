@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ideal Gas Simulator | PV = nRT</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   IDEAL GAS SIMULATOR — Premium Styles
+   Created by Amritash
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Reset & Foundation ─────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --bg: #07070d;
+    --surface: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.065);
+    --text: #e2e2ea;
+    --dim: #55566e;
+    --cyan: #00d4ff;
+    --purple: #8b5cf6;
+    --amber: #f59e0b;
+    --pink: #f472b6;
+    --green: #10b981;
+    --red: #ef4444;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ─── Intro Overlay ──────────────────────────────────── */
+#intro {
+    position: fixed; inset: 0; z-index: 999;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: var(--bg);
+    transition: opacity 0.7s cubic-bezier(.4,0,.2,1),
+                transform 0.7s cubic-bezier(.4,0,.2,1),
+                filter 0.7s cubic-bezier(.4,0,.2,1);
+}
+#intro.out {
+    opacity: 0;
+    transform: scale(1.03);
+    filter: blur(12px);
+    pointer-events: none;
+}
+#intro .tag {
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--dim);
+    opacity: 0;
+    animation: introUp 0.9s 0.15s cubic-bezier(.4,0,.2,1) forwards;
+}
+#intro .divider {
+    width: 48px; height: 1.5px;
+    background: linear-gradient(90deg, var(--cyan), var(--purple));
+    border-radius: 1px;
+    margin: 14px 0;
+    opacity: 0;
+    animation: introUp 0.9s 0.35s cubic-bezier(.4,0,.2,1) forwards;
+}
+#intro .author {
+    font-size: 1.7rem;
+    font-weight: 200;
+    letter-spacing: 0.04em;
+    background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 50%, var(--pink) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    opacity: 0;
+    animation: introUp 0.9s 0.55s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes introUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── App Shell ──────────────────────────────────────── */
+#app {
+    height: 100vh;
+    display: flex; flex-direction: column;
+    opacity: 0;
+    transition: opacity 0.5s cubic-bezier(.4,0,.2,1);
+}
+#app.show { opacity: 1; }
+
+/* ─── Header ─────────────────────────────────────────── */
+.header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px;
+    height: 46px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,7,13,0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    flex-shrink: 0;
+    z-index: 10;
+}
+.header h1 {
+    font-size: 0.92rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+}
+.header h1 span { color: var(--cyan); }
+
+.badge {
+    font-size: 0.76rem;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    color: var(--dim);
+    padding: 3px 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    animation: badgeGlow 4s infinite ease-in-out;
+}
+@keyframes badgeGlow {
+    0%, 100% { border-color: var(--border); box-shadow: none; }
+    50% { border-color: rgba(0,212,255,0.2); box-shadow: 0 0 12px rgba(0,212,255,0.05); }
+}
+
+/* ─── Layout Grid ────────────────────────────────────── */
+.layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 330px;
+    overflow: hidden;
+}
+
+/* ─── Simulation Canvas Area ─────────────────────────── */
+.sim-area {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at 50% 45%, rgba(0,212,255,0.018) 0%, transparent 65%);
+    overflow: hidden;
+}
+#sim { border-radius: 6px; }
+
+.sim-stats {
+    position: absolute;
+    bottom: 10px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 18px;
+    font-size: 0.67rem;
+    color: var(--dim);
+    background: rgba(0,0,0,0.55);
+    padding: 4px 16px;
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.04);
+}
+.sim-stats span em {
+    font-style: normal;
+    color: var(--cyan);
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.72rem;
+}
+
+/* ─── Control Panel ──────────────────────────────────── */
+.panel {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 12px;
+    display: flex; flex-direction: column; gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.06) transparent;
+}
+.panel::-webkit-scrollbar { width: 3px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+.panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+/* ─── Card Sections ──────────────────────────────────── */
+.card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    transition: border-color 0.3s ease;
+}
+.card:hover { border-color: rgba(255,255,255,0.1); }
+.card h3 {
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--dim);
+    margin-bottom: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.card h3::before {
+    content: '';
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--cyan);
+}
+
+/* ─── Slider Controls ────────────────────────────────── */
+.slider-row { margin-bottom: 14px; }
+.slider-row:last-child { margin-bottom: 0; }
+
+.slider-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 7px;
+}
+.slider-head .name {
+    font-size: 0.8rem; font-weight: 500;
+}
+.slider-head .name i {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    margin-left: 3px;
+}
+.slider-head .val {
+    font-size: 0.76rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    padding: 2px 9px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+/* Slider color variants */
+.s-cyan .name i { color: var(--cyan); }
+.s-cyan .val { color: var(--cyan); background: rgba(0,212,255,0.07); }
+.s-pink .name i { color: var(--pink); }
+.s-pink .val { color: var(--pink); background: rgba(244,114,182,0.07); }
+.s-amber .name i { color: var(--amber); }
+.s-amber .val { color: var(--amber); background: rgba(245,158,11,0.07); }
+.s-purple .name i { color: var(--purple); }
+.s-purple .val { color: var(--purple); background: rgba(139,92,246,0.07); }
+
+/* Range input styling */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%; height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.07);
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    touch-action: manipulation;
+}
+input[type="range"]:hover { background: rgba(255,255,255,0.12); }
+
+/* Webkit thumb */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px rgba(0,212,255,0.35), 0 0 2px rgba(0,212,255,0.8);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 14px rgba(0,212,255,0.5), 0 0 3px rgba(0,212,255,0.9);
+}
+input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(1.1);
+}
+/* Firefox thumb */
+input[type="range"]::-moz-range-thumb {
+    width: 15px; height: 15px;
+    border-radius: 50%; border: none;
+    background: var(--cyan);
+    box-shadow: 0 0 8px rgba(0,212,255,0.35);
+    cursor: pointer;
+}
+
+/* Thumb color overrides */
+.s-pink input::-webkit-slider-thumb { background: var(--pink); box-shadow: 0 0 8px rgba(244,114,182,0.35), 0 0 2px rgba(244,114,182,0.8); }
+.s-pink input::-webkit-slider-thumb:hover { box-shadow: 0 0 14px rgba(244,114,182,0.5), 0 0 3px rgba(244,114,182,0.9); }
+.s-pink input::-moz-range-thumb { background: var(--pink); box-shadow: 0 0 8px rgba(244,114,182,0.35); }
+
+.s-amber input::-webkit-slider-thumb { background: var(--amber); box-shadow: 0 0 8px rgba(245,158,11,0.35), 0 0 2px rgba(245,158,11,0.8); }
+.s-amber input::-webkit-slider-thumb:hover { box-shadow: 0 0 14px rgba(245,158,11,0.5), 0 0 3px rgba(245,158,11,0.9); }
+.s-amber input::-moz-range-thumb { background: var(--amber); box-shadow: 0 0 8px rgba(245,158,11,0.35); }
+
+.s-purple input::-webkit-slider-thumb { background: var(--purple); box-shadow: 0 0 8px rgba(139,92,246,0.35), 0 0 2px rgba(139,92,246,0.8); }
+.s-purple input::-webkit-slider-thumb:hover { box-shadow: 0 0 14px rgba(139,92,246,0.5), 0 0 3px rgba(139,92,246,0.9); }
+.s-purple input::-moz-range-thumb { background: var(--purple); box-shadow: 0 0 8px rgba(139,92,246,0.35); }
+
+/* ─── State Info Display ─────────────────────────────── */
+.state-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.state-box {
+    text-align: center;
+    padding: 9px 6px;
+    background: rgba(255,255,255,0.018);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.3s;
+}
+.state-box:hover { border-color: rgba(255,255,255,0.12); }
+.state-box .lbl {
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--dim);
+    margin-bottom: 3px;
+}
+.state-box .num {
+    font-size: 1.05rem;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    transition: color 0.3s;
+}
+.state-box.pv .num { color: var(--cyan); }
+.state-box.nrt .num { color: var(--purple); }
+
+.balance {
+    margin-top: 8px;
+    padding: 7px;
+    border-radius: 7px;
+    text-align: center;
+    font-size: 0.73rem;
+    font-weight: 500;
+    transition: all 0.35s ease;
+}
+.balance.ok {
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.18);
+    color: var(--green);
+}
+.balance.no {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.18);
+    color: var(--red);
+}
+
+/* ─── Action Buttons ─────────────────────────────────── */
+.btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+.btn {
+    padding: 7px 8px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-size: 0.72rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    touch-action: manipulation;
+}
+.btn:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(0,212,255,0.25);
+    box-shadow: 0 0 12px rgba(0,212,255,0.06);
+}
+.btn:active { transform: scale(0.97); }
+.btn.on {
+    background: rgba(0,212,255,0.07);
+    border-color: rgba(0,212,255,0.25);
+    color: var(--cyan);
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 0.63rem;
+    color: var(--dim);
+}
+.status-dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 5px;
+    vertical-align: middle;
+    animation: dotPulse 2s infinite ease-in-out;
+}
+.status-dot.off {
+    background: var(--amber);
+    animation: none;
+}
+@keyframes dotPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* ─── Graph Section ──────────────────────────────────── */
+.graph-wrap { position: relative; }
+#graph {
+    width: 100%;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.25);
+}
+
+/* ─── Mobile Responsive ──────────────────────────────── */
+@media (max-width: 800px) {
+    .layout {
+        grid-template-columns: 1fr;
+        overflow-y: auto;
+    }
+    .panel {
+        border-left: none;
+        border-top: 1px solid var(--border);
+    }
+    .sim-area {
+        min-height: 280px;
+        max-height: 45vh;
+    }
+    html, body {
+        overflow-y: auto;
+    }
+    #app {
+        height: auto;
+        min-height: 100vh;
+    }
+    .header h1 { font-size: 0.82rem; }
+    .sim-stats { font-size: 0.6rem; gap: 10px; }
+}
+
+@media (max-width: 400px) {
+    .panel { padding: 8px; gap: 8px; }
+    .card { padding: 10px; }
+    .slider-head .name { font-size: 0.75rem; }
+    .slider-head .val { font-size: 0.7rem; padding: 2px 6px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     INTRO OVERLAY
+     ═══════════════════════════════════════════════════════ -->
+<div id="intro">
+    <div class="tag">Ideal Gas Simulator</div>
+    <div class="divider"></div>
+    <div class="author">Created by Amritash</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     MAIN APPLICATION
+     ═══════════════════════════════════════════════════════ -->
+<div id="app">
+    <!-- Header Bar -->
+    <div class="header">
+        <h1>Ideal Gas <span>Simulator</span></h1>
+        <div class="badge">PV = nRT</div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="layout">
+        <!-- Simulation Canvas -->
+        <div class="sim-area">
+            <canvas id="sim"></canvas>
+            <div class="sim-stats">
+                <span>Particles: <em id="sParticles">30</em></span>
+                <span>Avg Speed: <em id="sSpeed">0.0</em></span>
+                <span>Wall Hits: <em id="sHits">0</em>/s</span>
+                <span>KE: <em id="sKE">0.0</em></span>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <aside class="panel">
+            <!-- Slider Controls -->
+            <div class="card">
+                <h3>Controls</h3>
+
+                <div class="slider-row s-pink">
+                    <div class="slider-head">
+                        <span class="name">Pressure <i>P</i></span>
+                        <span class="val" id="dP">1.00 atm</span>
+                    </div>
+                    <input type="range" id="rP" min="0.05" max="30" step="0.01" value="1">
+                </div>
+
+                <div class="slider-row s-cyan">
+                    <div class="slider-head">
+                        <span class="name">Volume <i>V</i></span>
+                        <span class="val" id="dV">24.6 L</span>
+                    </div>
+                    <input type="range" id="rV" min="1" max="50" step="0.1" value="24.6">
+                </div>
+
+                <div class="slider-row s-amber">
+                    <div class="slider-head">
+                        <span class="name">Temperature <i>T</i></span>
+                        <span class="val" id="dT">300 K</span>
+                    </div>
+                    <input type="range" id="rT" min="50" max="1000" step="1" value="300">
+                </div>
+
+                <div class="slider-row s-purple">
+                    <div class="slider-head">
+                        <span class="name">Moles <i>n</i></span>
+                        <span class="val" id="dN">1.00 mol</span>
+                    </div>
+                    <input type="range" id="rN" min="0.1" max="5" step="0.01" value="1">
+                </div>
+            </div>
+
+            <!-- System State -->
+            <div class="card">
+                <h3>System State</h3>
+                <div class="state-grid">
+                    <div class="state-box pv">
+                        <div class="lbl">P × V</div>
+                        <div class="num" id="pvVal">24.60</div>
+                    </div>
+                    <div class="state-box nrt">
+                        <div class="lbl">n × R × T</div>
+                        <div class="num" id="nrtVal">24.62</div>
+                    </div>
+                </div>
+                <div class="balance ok" id="balInd">✓ System Balanced (PV ≈ nRT)</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card">
+                <h3>Actions</h3>
+                <div class="btn-grid">
+                    <button class="btn" id="btnPause">⏸ Pause</button>
+                    <button class="btn" id="btnReset">↺ Reset</button>
+                    <button class="btn" id="btnRandom">⚡ Random</button>
+                    <button class="btn on" id="btnGraph">📊 Graph</button>
+                </div>
+                <div class="status-row">
+                    <span><span class="status-dot" id="sDot"></span><span id="sStatus">Running</span></span>
+                    <span id="sFPS">60 FPS</span>
+                </div>
+            </div>
+
+            <!-- P vs V Graph -->
+            <div class="card graph-wrap" id="graphCard">
+                <h3>P vs V — Isothermal Curve</h3>
+                <canvas id="graph" height="175"></canvas>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   IDEAL GAS SIMULATOR — Physics Engine & Renderer
+   PV = nRT  |  Created by Amritash
+   ═══════════════════════════════════════════════════════════════ */
+
+(function() {
+    'use strict';
+
+    // ─── Physical Constants ──────────────────────────────────────
+    const R = 0.08206;   // Gas constant: L·atm / (mol·K)
+
+    // ─── Simulation State ────────────────────────────────────────
+    const S = {
+        P: 1.0,          // Pressure in atm
+        V: 24.6,         // Volume in L
+        T: 300,          // Temperature in K
+        n: 1.0,          // Moles
+        paused: false,
+        showGraph: true
+    };
+
+    // ─── Engine Data ─────────────────────────────────────────────
+    let particles = [];
+    let wallFlashes = [];     // Visual flash on wall collision
+    let graphHistory = [];    // Trail on P-V diagram
+    let wallHitsFrame = 0;    // Wall collisions this counting period
+    let wallHitsRate = 0;     // Displayed hits/s
+    let hitsTimer = 0;
+
+    // ─── Canvas References ───────────────────────────────────────
+    let simCvs, simCtx, grCvs, grCtx;
+    let simW = 600, simH = 400, grW = 280, grH = 175;
+    let dpr = 1;
+
+    // ─── Animated Container Bounds ───────────────────────────────
+    let box = { x: 0, y: 0, w: 0, h: 0 };
+
+    // ─── Timing / FPS ────────────────────────────────────────────
+    let prevTime = 0, fpsCnt = 0, fpsT = 0, fps = 60;
+
+    // ─── Starfield (background) ──────────────────────────────────
+    let stars = [];
+
+    // ─── DOM Helper ──────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 1: INTRO SEQUENCE
+       ═══════════════════════════════════════════════════════════════ */
+
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            $('intro').classList.add('out');
+            setTimeout(() => {
+                $('intro').style.display = 'none';
+                $('app').classList.add('show');
+                boot();
+            }, 700);
+        }, 1900);
+    });
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 2: INITIALIZATION
+       ═══════════════════════════════════════════════════════════════ */
+
+    function boot() {
+        // Canvas references
+        simCvs = $('sim');
+        simCtx = simCvs.getContext('2d');
+        grCvs  = $('graph');
+        grCtx  = grCvs.getContext('2d');
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        // Generate stars
+        for (let i = 0; i < 80; i++) {
+            stars.push({
+                x: Math.random(),
+                y: Math.random(),
+                r: 0.3 + Math.random() * 0.8,
+                a: 0.1 + Math.random() * 0.4,
+                speed: 0.3 + Math.random() * 1.5   // twinkle speed
+            });
+        }
+
+        // Size canvases + init container
+        handleResize();
+        window.addEventListener('resize', handleResize);
+
+        // Setup interactions
+        bindSliders();
+        bindButtons();
+
+        // Create initial particles
+        syncParticleCount();
+        updateDisplays();
+        pushHistory();
+
+        // Start loop
+        requestAnimationFrame(mainLoop);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 3: CANVAS SIZING
+       ═══════════════════════════════════════════════════════════════ */
+
+    function handleResize() {
+        const area = document.querySelector('.sim-area');
+        if (!area) return;
+        const r = area.getBoundingClientRect();
+
+        // Simulation canvas
+        simW = Math.floor(r.width - 20);
+        simH = Math.floor(r.height - 38);
+        simCvs.width  = simW * dpr;
+        simCvs.height = simH * dpr;
+        simCvs.style.width  = simW + 'px';
+        simCvs.style.height = simH + 'px';
+
+        // Graph canvas
+        const gc = grCvs.parentElement;
+        grW = gc ? gc.clientWidth - 28 : 260;
+        grH = 175;
+        grCvs.width  = grW * dpr;
+        grCvs.height = grH * dpr;
+        grCvs.style.width = grW + 'px';
+
+        // Snap container to target (no animation on resize)
+        const tb = calcTargetBox();
+        box.x = tb.x; box.y = tb.y;
+        box.w = tb.w; box.h = tb.h;
+
+        // Clamp all particles to new bounds
+        particles.forEach(p => clampToBounds(p));
+    }
+
+    /** Calculate the target container bounds from current Volume */
+    function calcTargetBox() {
+        const frac = 0.22 + 0.68 * ((S.V - 1) / 49);
+        const w = simW * frac;
+        const h = simH * frac;
+        return {
+            x: (simW - w) / 2,
+            y: (simH - h) / 2,
+            w: w,
+            h: h
+        };
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 4: PARTICLE SYSTEM
+       ═══════════════════════════════════════════════════════════════ */
+
+    /** Particle constructor */
+    function createParticle(x, y, vx, vy) {
+        return {
+            x: x, y: y,
+            vx: vx, vy: vy,
+            r: 2.2 + Math.random() * 1.0,
+            hue: 0,       // Will be set by temp mapping
+            trail: []     // Recent positions for motion blur
+        };
+    }
+
+    /** Map temperature to hue: cold=240(blue), hot=0(red) */
+    function tempToHue(t) {
+        const norm = Math.max(0, Math.min(1, (t - 50) / 950));
+        return (1 - norm) * 240;
+    }
+
+    /** Target speed based on temperature (proportional to sqrt(T)) */
+    function calcTargetSpeed() {
+        return 1.0 + 1.4 * Math.sqrt((S.T - 50) / 200);
+    }
+
+    /** Ensure particle count matches moles */
+    function syncParticleCount() {
+        const target = Math.max(12, Math.min(140, Math.round(S.n * 28)));
+        const speed = calcTargetSpeed();
+        const hue = tempToHue(S.T);
+
+        // Add particles
+        while (particles.length < target) {
+            const angle = Math.random() * Math.PI * 2;
+            const s = speed * (0.4 + Math.random() * 1.2);
+            const p = createParticle(
+                box.x + 8 + Math.random() * Math.max(10, box.w - 16),
+                box.y + 8 + Math.random() * Math.max(10, box.h - 16),
+                Math.cos(angle) * s,
+                Math.sin(angle) * s
+            );
+            p.hue = hue;
+            particles.push(p);
+        }
+        // Remove excess particles
+        while (particles.length > target) {
+            particles.pop();
+        }
+    }
+
+    /** Keep particle within container bounds */
+    function clampToBounds(p) {
+        const margin = p.r + 0.5;
+        p.x = Math.max(box.x + margin, Math.min(box.x + box.w - margin, p.x));
+        p.y = Math.max(box.y + margin, Math.min(box.y + box.h - margin, p.y));
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 5: PHYSICS ENGINE
+       ═══════════════════════════════════════════════════════════════ */
+
+    function physicsStep(dt) {
+        if (S.paused) return;
+
+        // ── Animate container toward target ──
+        const tb = calcTargetBox();
+        const lerpRate = 0.09;
+        box.x += (tb.x - box.x) * lerpRate;
+        box.y += (tb.y - box.y) * lerpRate;
+        box.w += (tb.w - box.w) * lerpRate;
+        box.h += (tb.h - box.h) * lerpRate;
+
+        // ── Sync particle count ──
+        syncParticleCount();
+
+        // ── Target values ──
+        const tSpeed = calcTargetSpeed();
+        const tHue = tempToHue(S.T);
+        const step = Math.min(dt * 60, 3.0);  // Normalize to 60fps, cap
+
+        // ── Update each particle ──
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+
+            // Smooth color transition
+            p.hue += (tHue - p.hue) * 0.04;
+
+            // Gradually adjust speed toward target
+            const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+            if (spd > 0.005) {
+                const ratio = tSpeed / spd;
+                const adj = 1 + (ratio - 1) * 0.035;
+                p.vx *= adj;
+                p.vy *= adj;
+            } else {
+                // Restart stalled particles
+                const a = Math.random() * Math.PI * 2;
+                p.vx = Math.cos(a) * tSpeed;
+                p.vy = Math.sin(a) * tSpeed;
+            }
+
+            // Add small random perturbation (Brownian)
+            p.vx += (Math.random() - 0.5) * 0.02;
+            p.vy += (Math.random() - 0.5) * 0.02;
+
+            // Move
+            p.x += p.vx * step;
+            p.y += p.vy * step;
+
+            // Store trail for motion blur (keep last 4 points)
+            p.trail.push({ x: p.x, y: p.y });
+            if (p.trail.length > 4) p.trail.shift();
+
+            // ── Wall Collisions (elastic) ──
+            const bx1 = box.x + p.r;
+            const bx2 = box.x + box.w - p.r;
+            const by1 = box.y + p.r;
+            const by2 = box.y + box.h - p.r;
+
+            if (p.x < bx1) {
+                p.x = bx1; p.vx = Math.abs(p.vx);
+                emitWallFlash(p.x, p.y, spd);
+            } else if (p.x > bx2) {
+                p.x = bx2; p.vx = -Math.abs(p.vx);
+                emitWallFlash(p.x, p.y, spd);
+            }
+
+            if (p.y < by1) {
+                p.y = by1; p.vy = Math.abs(p.vy);
+                emitWallFlash(p.x, p.y, spd);
+            } else if (p.y > by2) {
+                p.y = by2; p.vy = -Math.abs(p.vy);
+                emitWallFlash(p.x, p.y, spd);
+            }
+        }
+
+        // ── Inter-Particle Collisions (elastic, O(n²) but n ≤ 140) ──
+        const len = particles.length;
+        for (let i = 0; i < len; i++) {
+            const a = particles[i];
+            for (let j = i + 1; j < len; j++) {
+                const b = particles[j];
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const distSq = dx * dx + dy * dy;
+                const minDist = a.r + b.r;
+
+                if (distSq < minDist * minDist && distSq > 0.001) {
+                    const dist = Math.sqrt(distSq);
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+
+                    // Relative velocity along collision normal
+                    const dvx = a.vx - b.vx;
+                    const dvy = a.vy - b.vy;
+                    const dvn = dvx * nx + dvy * ny;
+
+                    // Only resolve if particles are approaching
+                    if (dvn > 0) {
+                        a.vx -= dvn * nx;
+                        a.vy -= dvn * ny;
+                        b.vx += dvn * nx;
+                        b.vy += dvn * ny;
+                    }
+
+                    // Separate overlapping particles
+                    const overlap = (minDist - dist) * 0.5;
+                    a.x -= nx * overlap;
+                    a.y -= ny * overlap;
+                    b.x += nx * overlap;
+                    b.y += ny * overlap;
+                }
+            }
+        }
+
+        // ── Cleanup expired wall flashes ──
+        const now = performance.now();
+        wallFlashes = wallFlashes.filter(f => now - f.t < 180);
+
+        // ── Wall hit rate counter ──
+        hitsTimer += dt;
+        if (hitsTimer >= 1.0) {
+            wallHitsRate = wallHitsFrame;
+            wallHitsFrame = 0;
+            hitsTimer -= 1.0;
+        }
+    }
+
+    /** Create a wall collision flash effect */
+    function emitWallFlash(x, y, intensity) {
+        wallFlashes.push({
+            x: x, y: y,
+            t: performance.now(),
+            i: Math.min(intensity * 0.5, 3)
+        });
+        wallHitsFrame++;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 6: SIMULATION RENDERER
+       ═══════════════════════════════════════════════════════════════ */
+
+    function renderSimulation() {
+        const ctx = simCtx;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, simW, simH);
+
+        // ── Background ──
+        ctx.fillStyle = '#04040a';
+        ctx.fillRect(0, 0, simW, simH);
+
+        // ── Starfield ──
+        const time = performance.now() * 0.001;
+        for (let i = 0; i < stars.length; i++) {
+            const s = stars[i];
+            const twinkle = 0.5 + 0.5 * Math.sin(time * s.speed + i);
+            const alpha = s.a * twinkle;
+            ctx.fillStyle = `rgba(200,210,255,${alpha})`;
+            ctx.beginPath();
+            ctx.arc(s.x * simW, s.y * simH, s.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ── Subtle Grid ──
+        ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+        ctx.lineWidth = 0.5;
+        const gridSize = 28;
+        for (let x = gridSize; x < simW; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, simH); ctx.stroke();
+        }
+        for (let y = gridSize; y < simH; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(simW, y); ctx.stroke();
+        }
+
+        // ── Container Ambient Glow ──
+        const cGrad = ctx.createRadialGradient(
+            box.x + box.w / 2, box.y + box.h / 2, 0,
+            box.x + box.w / 2, box.y + box.h / 2, Math.max(box.w, box.h) * 0.7
+        );
+        cGrad.addColorStop(0, 'rgba(0,212,255,0.025)');
+        cGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = cGrad;
+        ctx.fillRect(0, 0, simW, simH);
+
+        // ── Container Box ──
+        // Fill
+        ctx.fillStyle = 'rgba(0,212,255,0.012)';
+        ctx.fillRect(box.x, box.y, box.w, box.h);
+
+        // Border glow
+        ctx.shadowColor = 'rgba(0,212,255,0.2)';
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = 'rgba(0,212,255,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+        ctx.shadowBlur = 0;
+
+        // ── Piston (right wall) ──
+        const pistonX = box.x + box.w;
+        ctx.fillStyle = 'rgba(0,212,255,0.06)';
+        ctx.fillRect(pistonX - 2, box.y + 1, 7, box.h - 2);
+        ctx.strokeStyle = 'rgba(0,212,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(pistonX, box.y);
+        ctx.lineTo(pistonX, box.y + box.h);
+        ctx.stroke();
+        // Piston grip lines
+        ctx.strokeStyle = 'rgba(0,212,255,0.2)';
+        ctx.lineWidth = 0.7;
+        for (let y = box.y + 6; y < box.y + box.h - 4; y += 6) {
+            ctx.beginPath();
+            ctx.moveTo(pistonX + 1, y);
+            ctx.lineTo(pistonX + 5, y);
+            ctx.stroke();
+        }
+
+        // ── Corner Brackets ──
+        const cLen = Math.min(14, box.w * 0.08, box.h * 0.08);
+        ctx.strokeStyle = 'rgba(0,212,255,0.65)';
+        ctx.lineWidth = 1.8;
+        drawCorner(ctx, box.x, box.y, cLen, 1, 1);
+        drawCorner(ctx, box.x + box.w, box.y, cLen, -1, 1);
+        drawCorner(ctx, box.x, box.y + box.h, cLen, 1, -1);
+        drawCorner(ctx, box.x + box.w, box.y + box.h, cLen, -1, -1);
+
+        // ── Wall Collision Flashes ──
+        const now = performance.now();
+        for (let i = 0; i < wallFlashes.length; i++) {
+            const f = wallFlashes[i];
+            const age = (now - f.t) / 180;
+            const alpha = (1 - age) * 0.35 * Math.min(f.i, 2.5);
+            const radius = 5 + 6 * age;
+            const fg = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, radius);
+            fg.addColorStop(0, `rgba(0,212,255,${alpha})`);
+            fg.addColorStop(1, 'rgba(0,212,255,0)');
+            ctx.fillStyle = fg;
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ── Particles ──
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            const hue = p.hue;
+
+            // Motion trail
+            if (p.trail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(p.trail[0].x, p.trail[0].y);
+                for (let t = 1; t < p.trail.length; t++) {
+                    ctx.lineTo(p.trail[t].x, p.trail[t].y);
+                }
+                ctx.strokeStyle = `hsla(${hue},100%,70%,0.12)`;
+                ctx.lineWidth = p.r * 0.8;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+
+            // Glow halo
+            const gRad = p.r * 3.5;
+            const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, gRad);
+            pg.addColorStop(0, `hsla(${hue},100%,72%,0.3)`);
+            pg.addColorStop(0.5, `hsla(${hue},100%,65%,0.08)`);
+            pg.addColorStop(1, `hsla(${hue},100%,60%,0)`);
+            ctx.fillStyle = pg;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, gRad, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Core dot
+            ctx.fillStyle = `hsl(${hue},100%,80%)`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tiny highlight
+            ctx.fillStyle = `hsla(${hue},60%,95%,0.5)`;
+            ctx.beginPath();
+            ctx.arc(p.x - p.r * 0.25, p.y - p.r * 0.25, p.r * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ── Labels on Canvas ──
+        ctx.font = '10px -apple-system, system-ui, sans-serif';
+        ctx.textBaseline = 'bottom';
+
+        ctx.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx.textAlign = 'left';
+        ctx.fillText('V = ' + S.V.toFixed(1) + ' L', box.x + 2, box.y - 5);
+
+        ctx.textAlign = 'right';
+        ctx.fillText('T = ' + Math.round(S.T) + ' K', box.x + box.w - 2, box.y - 5);
+
+        // Pressure indicator on left wall
+        ctx.save();
+        ctx.translate(box.x - 6, box.y + box.h / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(244,114,182,0.3)';
+        ctx.font = '9px -apple-system, system-ui, sans-serif';
+        ctx.fillText('P = ' + S.P.toFixed(2) + ' atm', 0, 0);
+        ctx.restore();
+
+        // ── Vignette Overlay ──
+        const vig = ctx.createRadialGradient(
+            simW / 2, simH / 2, simW * 0.25,
+            simW / 2, simH / 2, simW * 0.75
+        );
+        vig.addColorStop(0, 'rgba(0,0,0,0)');
+        vig.addColorStop(1, 'rgba(0,0,0,0.3)');
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, simW, simH);
+    }
+
+    /** Draw an L-shaped corner bracket */
+    function drawCorner(ctx, x, y, len, dx, dy) {
+        ctx.beginPath();
+        ctx.moveTo(x, y + dy * len);
+        ctx.lineTo(x, y);
+        ctx.lineTo(x + dx * len, y);
+        ctx.stroke();
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 7: GRAPH RENDERER
+       ═══════════════════════════════════════════════════════════════ */
+
+    function renderGraph() {
+        if (!S.showGraph) return;
+
+        const ctx = grCtx;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, grW, grH);
+
+        // Layout
+        const pad = { t: 10, r: 14, b: 24, l: 36 };
+        const gw = grW - pad.l - pad.r;
+        const gh = grH - pad.t - pad.b;
+
+        if (gw < 20 || gh < 20) return;
+
+        // Background
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(0, 0, grW, grH);
+
+        // Ranges
+        const vMin = 1, vMax = 50;
+        const pMaxCalc = S.n * R * S.T / vMin;
+        const pMax = Math.max(4, Math.min(80, pMaxCalc * 1.15));
+
+        // ── Grid lines ──
+        ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i <= 5; i++) {
+            const y = pad.t + (gh / 5) * i;
+            ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + gw, y); ctx.stroke();
+        }
+        for (let i = 0; i <= 5; i++) {
+            const x = pad.l + (gw / 5) * i;
+            ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + gh); ctx.stroke();
+        }
+
+        // ── Axes ──
+        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, pad.t);
+        ctx.lineTo(pad.l, pad.t + gh);
+        ctx.lineTo(pad.l + gw, pad.t + gh);
+        ctx.stroke();
+
+        // ── Axis Labels & Ticks ──
+        ctx.font = '8px -apple-system, system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+
+        // Y-axis (Pressure)
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.t + (gh / 4) * i;
+            const val = pMax * (1 - i / 4);
+            ctx.fillText(val.toFixed(val >= 10 ? 0 : 1), pad.l - 4, y);
+        }
+
+        // X-axis (Volume)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        const vTicks = [1, 10, 20, 30, 40, 50];
+        vTicks.forEach(v => {
+            const x = pad.l + ((v - vMin) / (vMax - vMin)) * gw;
+            ctx.fillText(v, x, pad.t + gh + 5);
+        });
+
+        // Axis titles
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '8px -apple-system, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Volume (L)', pad.l + gw / 2, grH - 2);
+
+        ctx.save();
+        ctx.translate(9, pad.t + gh / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Pressure (atm)', 0, 0);
+        ctx.restore();
+
+        // Helper: convert P,V to pixel coords
+        const toX = v => pad.l + ((v - vMin) / (vMax - vMin)) * gw;
+        const toY = p => pad.t + (1 - p / pMax) * gh;
+
+        // ── History Trail ──
+        if (graphHistory.length > 1) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(139,92,246,0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            for (let i = 0; i < graphHistory.length; i++) {
+                const pt = graphHistory[i];
+                const px = toX(pt.V);
+                const py = Math.max(pad.t, Math.min(pad.t + gh, toY(pt.P)));
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // ── Isothermal Curve: P = nRT/V ──
+        // Fill under curve
+        ctx.beginPath();
+        let curveStarted = false;
+        let firstX = 0, lastX = 0, lastY = 0;
+        for (let v = vMin; v <= vMax; v += 0.25) {
+            const p = S.n * R * S.T / v;
+            const px = toX(v);
+            const py = toY(p);
+            const pyc = Math.max(pad.t, Math.min(pad.t + gh, py));
+            if (py >= pad.t - 2 && py <= pad.t + gh + 2) {
+                if (!curveStarted) {
+                    ctx.moveTo(px, pyc);
+                    firstX = px;
+                    curveStarted = true;
+                } else {
+                    ctx.lineTo(px, pyc);
+                }
+                lastX = px;
+                lastY = pyc;
+            }
+        }
+        if (curveStarted) {
+            ctx.lineTo(lastX, pad.t + gh);
+            ctx.lineTo(firstX, pad.t + gh);
+            ctx.closePath();
+            const fillGrad = ctx.createLinearGradient(0, pad.t, 0, pad.t + gh);
+            fillGrad.addColorStop(0, 'rgba(0,212,255,0.06)');
+            fillGrad.addColorStop(1, 'rgba(0,212,255,0)');
+            ctx.fillStyle = fillGrad;
+            ctx.fill();
+        }
+
+        // Curve line
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0,212,255,0.55)';
+        ctx.lineWidth = 1.5;
+        curveStarted = false;
+        for (let v = vMin; v <= vMax; v += 0.25) {
+            const p = S.n * R * S.T / v;
+            const px = toX(v);
+            const py = toY(p);
+            if (py >= pad.t && py <= pad.t + gh) {
+                if (!curveStarted) { ctx.moveTo(px, py); curveStarted = true; }
+                else ctx.lineTo(px, py);
+            }
+        }
+        ctx.stroke();
+
+        // ── Current State Point ──
+        const cpx = toX(S.V);
+        const cpy = toY(S.P);
+        const cpyc = Math.max(pad.t, Math.min(pad.t + gh, cpy));
+
+        if (cpy >= pad.t - 8 && cpy <= pad.t + gh + 8) {
+            // Crosshair lines
+            ctx.strokeStyle = 'rgba(0,212,255,0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(cpx, pad.t + gh); ctx.lineTo(cpx, cpyc);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(pad.l, cpyc); ctx.lineTo(cpx, cpyc);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Point glow
+            const pg = ctx.createRadialGradient(cpx, cpyc, 0, cpx, cpyc, 12);
+            pg.addColorStop(0, 'rgba(0,212,255,0.45)');
+            pg.addColorStop(1, 'rgba(0,212,255,0)');
+            ctx.fillStyle = pg;
+            ctx.beginPath();
+            ctx.arc(cpx, cpyc, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Point dot
+            ctx.fillStyle = '#00d4ff';
+            ctx.beginPath();
+            ctx.arc(cpx, cpyc, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // White center
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.beginPath();
+            ctx.arc(cpx, cpyc, 1.2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ── Isotherm Label ──
+        ctx.font = '8px -apple-system, system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(0,212,255,0.5)';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('T = ' + Math.round(S.T) + 'K isotherm', pad.l + gw - 2, pad.t + 12);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 8: UI DISPLAY UPDATES
+       ═══════════════════════════════════════════════════════════════ */
+
+    function updateDisplays() {
+        // Slider value displays
+        $('dP').textContent = S.P.toFixed(2) + ' atm';
+        $('dV').textContent = S.V.toFixed(1) + ' L';
+        $('dT').textContent = Math.round(S.T) + ' K';
+        $('dN').textContent = S.n.toFixed(2) + ' mol';
+
+        // PV and nRT
+        const pv  = S.P * S.V;
+        const nrt = S.n * R * S.T;
+        $('pvVal').textContent  = pv.toFixed(2);
+        $('nrtVal').textContent = nrt.toFixed(2);
+
+        // Balance indicator
+        const diff = Math.abs(pv - nrt) / Math.max(nrt, 0.01);
+        const bal = $('balInd');
+        if (diff < 0.035) {
+            bal.className = 'balance ok';
+            bal.textContent = '✓ System Balanced (PV ≈ nRT)';
+        } else {
+            bal.className = 'balance no';
+            bal.textContent = '⚠ System Unbalanced (' + (diff * 100).toFixed(1) + '% off)';
+        }
+
+        // Stats bar
+        $('sParticles').textContent = particles.length;
+        $('sHits').textContent = wallHitsRate;
+
+        // Average speed
+        let totalSpd = 0;
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            totalSpd += Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        }
+        const avgSpd = particles.length > 0 ? totalSpd / particles.length : 0;
+        $('sSpeed').textContent = avgSpd.toFixed(1);
+
+        // Kinetic energy (proportional to T)
+        const ke = (1.5 * S.n * R * S.T).toFixed(1);
+        $('sKE').textContent = ke;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 9: SLIDER BINDINGS
+       ═══════════════════════════════════════════════════════════════ */
+
+    function bindSliders() {
+        // Temperature → recalculate P
+        $('rT').addEventListener('input', function() {
+            S.T = parseFloat(this.value);
+            S.P = S.n * R * S.T / S.V;
+            $('rP').value = S.P;
+            updateDisplays();
+            pushHistory();
+        });
+
+        // Volume → recalculate P
+        $('rV').addEventListener('input', function() {
+            S.V = parseFloat(this.value);
+            S.P = S.n * R * S.T / S.V;
+            $('rP').value = S.P;
+            updateDisplays();
+            pushHistory();
+        });
+
+        // Moles → recalculate P
+        $('rN').addEventListener('input', function() {
+            S.n = parseFloat(this.value);
+            S.P = S.n * R * S.T / S.V;
+            $('rP').value = S.P;
+            updateDisplays();
+            pushHistory();
+        });
+
+        // Pressure → recalculate T (inverse relationship)
+        $('rP').addEventListener('input', function() {
+            S.P = parseFloat(this.value);
+            // T = PV / (nR)
+            let newT = S.P * S.V / (S.n * R);
+            // Clamp T within slider range
+            newT = Math.max(50, Math.min(1000, newT));
+            S.T = newT;
+            // Recalculate P with clamped T for consistency
+            S.P = S.n * R * S.T / S.V;
+            $('rT').value = S.T;
+            this.value = S.P;
+            updateDisplays();
+            pushHistory();
+        });
+    }
+
+    /** Add current state to graph history */
+    function pushHistory() {
+        graphHistory.push({ P: S.P, V: S.V });
+        if (graphHistory.length > 120) graphHistory.shift();
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 10: BUTTON CONTROLS
+       ═══════════════════════════════════════════════════════════════ */
+
+    function bindButtons() {
+        // Pause / Resume
+        $('btnPause').addEventListener('click', function() {
+            S.paused = !S.paused;
+            this.textContent = S.paused ? '▶ Resume' : '⏸ Pause';
+            this.classList.toggle('on', S.paused);
+            $('sDot').classList.toggle('off', S.paused);
+            $('sStatus').textContent = S.paused ? 'Paused' : 'Running';
+        });
+
+        // Reset
+        $('btnReset').addEventListener('click', function() {
+            S.P = 1.0; S.V = 24.6; S.T = 300; S.n = 1.0;
+            $('rP').value = S.P;
+            $('rV').value = S.V;
+            $('rT').value = S.T;
+            $('rN').value = S.n;
+            particles = [];
+            wallFlashes = [];
+            graphHistory = [];
+            wallHitsFrame = 0;
+            wallHitsRate = 0;
+
+            const tb = calcTargetBox();
+            box.x = tb.x; box.y = tb.y;
+            box.w = tb.w; box.h = tb.h;
+
+            syncParticleCount();
+            updateDisplays();
+            pushHistory();
+        });
+
+        // Random Scenario
+        $('btnRandom').addEventListener('click', function() {
+            S.T = 80 + Math.floor(Math.random() * 880);
+            S.V = 2 + Math.floor(Math.random() * 460) / 10;
+            S.n = 0.2 + Math.floor(Math.random() * 460) / 100;
+            S.P = S.n * R * S.T / S.V;
+
+            $('rP').value = S.P;
+            $('rV').value = S.V;
+            $('rT').value = S.T;
+            $('rN').value = S.n;
+
+            graphHistory = [];
+            updateDisplays();
+            pushHistory();
+
+            // Brief visual feedback
+            this.style.borderColor = 'rgba(245,158,11,0.5)';
+            this.style.boxShadow = '0 0 12px rgba(245,158,11,0.15)';
+            setTimeout(() => {
+                this.style.borderColor = '';
+                this.style.boxShadow = '';
+            }, 300);
+        });
+
+        // Toggle Graph
+        $('btnGraph').addEventListener('click', function() {
+            S.showGraph = !S.showGraph;
+            $('graphCard').style.display = S.showGraph ? 'block' : 'none';
+            this.classList.toggle('on', S.showGraph);
+            if (S.showGraph) handleResize();
+        });
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 11: MAIN ANIMATION LOOP
+       ═══════════════════════════════════════════════════════════════ */
+
+    function mainLoop(timestamp) {
+        // Delta time (seconds), capped at 50ms to avoid spiral of death
+        const dt = Math.min((timestamp - prevTime) / 1000, 0.05);
+        prevTime = timestamp;
+
+        // FPS counter
+        fpsCnt++;
+        if (timestamp - fpsT >= 1000) {
+            fps = fpsCnt;
+            fpsCnt = 0;
+            fpsT = timestamp;
+            $('sFPS').textContent = fps + ' FPS';
+            // Periodic UI refresh
+            updateDisplays();
+        }
+
+        // Physics simulation
+        physicsStep(dt);
+
+        // Rendering
+        renderSimulation();
+        renderGraph();
+
+        // Continue loop
+        requestAnimationFrame(mainLoop);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SECTION 12: KEYBOARD SHORTCUTS
+       ═══════════════════════════════════════════════════════════════ */
+
+    document.addEventListener('keydown', function(e) {
+        switch(e.key.toLowerCase()) {
+            case ' ':
+                e.preventDefault();
+                $('btnPause').click();
+                break;
+            case 'r':
+                if (!e.ctrlKey && !e.metaKey) $('btnReset').click();
+                break;
+            case 'g':
+                $('btnGraph').click();
+                break;
+            case 'q':
+                $('btnRandom').click();
+                break;
+        }
+    });
+
+})();
+</script>
+</body>
+</html>
